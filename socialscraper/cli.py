@@ -66,32 +66,41 @@ def cmd_x_preview(args):
     return 0
 
 def cmd_x_collect(args):
-    data=read_manifest(Path(args.manifest)); client=XAPIClient()
-    collected=0; failures=0; results=[]; stop=False
+    data=read_manifest(Path(args.manifest))
+    client=XAPIClient()
+    collected=0; failures=0; results=[]; stop=False; total_reads=0
+    read_budget=args.max_total_posts
     for company in data["companies"]:
+        if stop or read_budget < 5: break
         for account in _accounts(company,"x"):
+            if stop or read_budget < 5: break
             if not isinstance(account,dict) or not account.get("handle"): continue
             if account.get("status") not in {"official_link_verified","regional_only"}:
                 print(f"SKIP @{account['handle']}: status={account.get('status','candidate')} is not approved for collection")
                 continue
+            limit=min(args.max_posts,read_budget)
             try:
-                record=collect_official_profile(client,account["handle"],max_posts=args.max_posts)
-                record["company"]=company.get("name"); results.append(record)
+                record=collect_official_profile(client,account["handle"],max_posts=limit)
+                record["company"]=company.get("name")
+                results.append(record)
                 if record.get("status")=="not_found":
-                    failures+=1; print(f"NOT FOUND @{account['handle']}")
+                    failures+=1
+                    print(f"NOT FOUND @{account['handle']}")
                 else:
-                    collected+=len(record.get("posts") or [])
-                    print(f"OK @{record['handle']}: {len(record.get('posts') or [])} public posts")
+                    n=len(record.get("posts") or [])
+                    collected+=n; total_reads+=n; read_budget-=n
+                    print(f"OK @{record['handle']}: {n} public posts")
             except XAPIError as exc:
                 print(f"ERROR @{account['handle']}: {exc}")
                 results.append({"company":company.get("name"),"handle":account["handle"],"status":"error","error":str(exc)})
                 failures+=1
                 if exc.status_code==401:
-                    print("Stopping: invalid X API credentials."); stop=True; break
-        if stop: break
+                    print("Stopping: invalid X API credentials.")
+                    stop=True
+                    break
     out=Path(args.output); out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(results,indent=2,ensure_ascii=False),encoding="utf-8")
-    print(f"Saved {len(results)} profile result(s); posts={collected}; failures={failures}; output={out}")
+    print(f"Saved {len(results)} profile result(s); posts={collected}; per-run post budget={args.max_total_posts}; output={out}")
     return 1 if failures else 0
 
 def main():
@@ -106,7 +115,8 @@ def main():
     xp=sub.add_parser("x-preview",help="Preview X profiles from the manifest without making requests.")
     xp.add_argument("--manifest",default=str(DEFAULT_MANIFEST)); xp.set_defaults(handler=cmd_x_preview)
     xc=sub.add_parser("x-collect",help="Collect approved profiles via official X API only.")
-    xc.add_argument("--manifest",default=str(DEFAULT_MANIFEST)); xc.add_argument("--max-posts",type=int,default=10); xc.add_argument("--output",default="output/x_posts.json"); xc.set_defaults(handler=cmd_x_collect)
+    xc.add_argument("--manifest",default=str(DEFAULT_MANIFEST)); xc.add_argument("--max-posts",type=int,default=10); xc.add_argument("--max-total-posts",type=int,default=100)
+    xc.add_argument("--output",default="output/x_posts.json"); xc.set_defaults(handler=cmd_x_collect)
     args=parser.parse_args()
     try: raise SystemExit(args.handler(args))
     except (ValueError,FileNotFoundError,json.JSONDecodeError) as exc: parser.error(str(exc))
