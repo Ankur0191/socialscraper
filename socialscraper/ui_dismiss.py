@@ -1,52 +1,35 @@
-"""Best-effort dismissal of ordinary, non-access-control public-page UI.
-
-This helper clicks an allowlist of explicit close / cookie-consent buttons. It does
-not remove arbitrary DOM elements with evaluate(), modify browser cookies, disable
-scripts, dismiss security challenges, or automate sign-in-wall bypasses.
-"""
+"""Dismiss ordinary, non-access-control public-page UI conservatively."""
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
-
 from playwright.sync_api import Page
-
 
 DISMISS_LABELS = [
     "Close", "Close dialog", "Close modal", "Dismiss", "Got it",
     "Accept all cookies", "Accept cookies", "Allow all cookies",
-    "Reject optional cookies", "Decline cookies",
-    "Continue without accepting", "No thanks", "Not now", "Skip",
+    "Reject optional cookies", "Decline cookies", "Continue without accepting",
+    "No thanks", "Not now", "Skip",
 ]
 DISMISS_SELECTORS = [
-    'button[aria-label="Close"]',
-    'button[aria-label="close"]',
-    'button[title="Close"]',
-    '[role="dialog"] button[aria-label="Close"]',
-    '[data-testid="close-button"]',
-    '[data-testid="modal-close"]',
-    '#onetrust-accept-btn-handler',
-    '#onetrust-reject-all-handler',
+    'button[aria-label="Close"]', 'button[aria-label="close"]', 'button[title="Close"]',
+    '[role="dialog"] button[aria-label="Close"]', '[data-testid="close-button"]',
+    '[data-testid="modal-close"]', '#onetrust-accept-btn-handler', '#onetrust-reject-all-handler',
 ]
 GATE_PATTERNS = [
     "sign in to continue", "log in to continue", "you must be logged in",
-    "create an account to continue", "subscribe to continue",
-    "subscription required", "verify you are human", "checking your browser",
-    "unusual traffic", "access denied", "captcha", "rate limit exceeded",
-    "too many requests", "automated requests", "not authorized",
+    "create an account to continue", "subscribe to continue", "subscription required",
+    "verify you are human", "checking your browser", "unusual traffic", "access denied",
+    "captcha", "rate limit exceeded", "too many requests", "automated requests", "not authorized",
 ]
-
 
 @dataclass
 class DismissReport:
     dismissed: list[str] = field(default_factory=list)
     blockers: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
-
     @property
     def safe_to_continue(self) -> bool:
         return not self.blockers
-
 
 def _page_text(page: Page) -> str:
     try:
@@ -54,13 +37,8 @@ def _page_text(page: Page) -> str:
     except Exception:
         return ""
 
-
 def detect_access_gate(page: Page) -> list[str]:
-    found: list[str] = []
-    text = _page_text(page)
-    for pattern in GATE_PATTERNS:
-        if pattern in text and pattern not in found:
-            found.append(pattern)
+    found = [p for p in GATE_PATTERNS if p in _page_text(page)]
     parsed = urlparse(page.url or "")
     path = parsed.path.lower()
     if any(part in path for part in ("/login", "/signin", "/sign-in", "/auth/")):
@@ -69,23 +47,22 @@ def detect_access_gate(page: Page) -> list[str]:
         found.append("challenge route")
     return found
 
-
 def dismiss_ordinary_overlays(page: Page, *, max_dismissals: int = 8) -> DismissReport:
+    """Click explicit ordinary close/consent buttons; never delete DOM elements."""
     report = DismissReport()
     gates = detect_access_gate(page)
     if gates:
         report.blockers.extend(gates)
         return report
-
     for label in DISMISS_LABELS:
         if len(report.dismissed) >= max_dismissals:
             break
         try:
             locator = page.get_by_role("button", name=label, exact=False)
-            for index in range(min(locator.count(), 3)):
+            for idx in range(min(locator.count(), 3)):
                 if len(report.dismissed) >= max_dismissals:
                     break
-                candidate = locator.nth(index)
+                candidate = locator.nth(idx)
                 try:
                     if candidate.is_visible(timeout=250) and candidate.is_enabled(timeout=250):
                         candidate.click(timeout=1000)
@@ -99,16 +76,15 @@ def dismiss_ordinary_overlays(page: Page, *, max_dismissals: int = 8) -> Dismiss
                     continue
         except Exception:
             continue
-
     for selector in DISMISS_SELECTORS:
         if len(report.dismissed) >= max_dismissals:
             break
         try:
             locator = page.locator(selector)
-            for index in range(min(locator.count(), 2)):
+            for idx in range(min(locator.count(), 2)):
                 if len(report.dismissed) >= max_dismissals:
                     break
-                candidate = locator.nth(index)
+                candidate = locator.nth(idx)
                 try:
                     if candidate.is_visible(timeout=250) and candidate.is_enabled(timeout=250):
                         candidate.click(timeout=1000)
@@ -122,7 +98,6 @@ def dismiss_ordinary_overlays(page: Page, *, max_dismissals: int = 8) -> Dismiss
                     continue
         except Exception:
             continue
-
     gates = detect_access_gate(page)
     if gates:
         report.blockers.extend(gates)
