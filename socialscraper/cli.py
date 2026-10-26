@@ -6,6 +6,7 @@ from typing import Any
 from socialscraper.browser import inspect_public_page
 from socialscraper.link_verifier import check_link
 from socialscraper.x_api import XAPIClient, XAPIError, collect_official_profile
+
 ROOT=Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST=ROOT/"data"/"competitor_socials.json"
 
@@ -66,7 +67,7 @@ def cmd_x_preview(args):
 
 def cmd_x_collect(args):
     data=read_manifest(Path(args.manifest)); client=XAPIClient()
-    collected=0; failures=0; results=[]
+    collected=0; failures=0; results=[]; stop=False
     for company in data["companies"]:
         for account in _accounts(company,"x"):
             if not isinstance(account,dict) or not account.get("handle"): continue
@@ -86,7 +87,8 @@ def cmd_x_collect(args):
                 results.append({"company":company.get("name"),"handle":account["handle"],"status":"error","error":str(exc)})
                 failures+=1
                 if exc.status_code==401:
-                    print("Stopping: invalid X API credentials."); break
+                    print("Stopping: invalid X API credentials."); stop=True; break
+        if stop: break
     out=Path(args.output); out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(results,indent=2,ensure_ascii=False),encoding="utf-8")
     print(f"Saved {len(results)} profile result(s); posts={collected}; failures={failures}; output={out}")
