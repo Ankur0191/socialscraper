@@ -1,0 +1,358 @@
+{
+  "researched_at": "2026-10-27",
+  "source": "TICRivalmap Supabase competitors table",
+  "verification_legend": {
+    "official_link_verified": "An official company source points to the profile; live check still required.",
+    "profile_exists": "A plausible public profile exists, but official ownership is not fully verified.",
+    "candidate": "Plausible URL, not yet confirmed.",
+    "regional_only": "Company-linked regional account, not necessarily the global account.",
+    "not_confirmed": "No safe handle found; do not guess."
+  },
+  "companies": [
+    {
+      "slug": "applus",
+      "name": "Applus+",
+      "socials": {
+        "x": {
+          "url": null,
+          "handle": null,
+          "status": "not_confirmed",
+          "search_url": "https://x.com/search?q=%22Applus%2B%22",
+          "evidence_url": "https://www.applus.com/",
+          "notes": "No current handle confirmed; do not guess @applus."
+        },
+        "linkedin": {
+          "url": "https://www.linkedin.com/company/applus/",
+          "status": "candidate",
+          "evidence_url": "https://www.linkedin.com/company/applus/"
+        },
+        "youtube": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.youtube.com/results?search_query=Applus%2B+official"
+        },
+        "facebook": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.facebook.com/search/top?q=Applus%2B"
+        },
+        "instagram": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.instagram.com/"
+        }
+      }
+    },
+    {
+      "slug": "bureau-veritas",
+      "name": "Bureau Veritas",
+      "socials": {
+        "x": {
+          "url": "https://x.com/bureauveritas",
+          "handle": "bureauveritas",
+          "status": "candidate",
+          "search_url": "https://x.com/search?q=%22Bureau%20Veritas%22",
+          "evidence_url": "https://www.bureauveritas.com/",
+          "notes": "Candidate only; keep disabled until live identity is confirmed."
+        },
+        "linkedin": {
+          "url": "https://www.linkedin.com/company/bureau-veritas-group/",
+          "status": "official_link_verified",
+          "scope": "global",
+          "evidence_url": "https://www.linkedin.com/company/bureau-veritas-group/"
+        },
+        "facebook": {
+          "url": "https://www.facebook.com/bureauveritasfrance",
+          "status": "regional_only",
+          "scope": "France",
+          "evidence_url": "https://www.linkedin.com/showcase/bureau-veritas-france/"
+        },
+        "instagram": {
+          "url": "https://www.instagram.com/bureauveritas.fr",
+          "status": "regional_only",
+          "scope": "France",
+          "evidence_url": "https://www.linkedin.com/showcase/bureau-veritas-france/"
+        },
+        "youtube": {
+          "url": "https://www.youtube.com/user/BureauVeritasGroup",
+          "status": "regional_only",
+          "scope": "referenced by Bureau Veritas France",
+          "evidence_url": "https://www.linkedin.com/showcase/bureau-veritas-france/"
+        }
+      }
+    },
+    {
+      "slug": "cotecna",
+      "name": "Cotecna",
+      "socials": {
+        "x": {
+          "url": "https://x.com/cotecna",
+          "handle": "cotecna",
+          "status": "official_link_verified",
+          "evidence_url": "https://www.cotecna.com/",
+          "notes": "An official regional source reportedly lists twitter.com/cotecna; live existence still needs checking."
+        },
+        "linkedin": {
+          "url": "https://www.linkedin.com/company/cotecna/",
+          "status": "candidate"
+        },
+        "facebook": {
+          "url": "https://www.facebook.com/cotecna.inspection",
+          "status": "candidate"
+        },
+        "instagram": {
+          "url": "https://www.instagram.com/cotecna_group/",
+          "status": "candidate"
+        },
+        "youtube": {
+          "url": "https://www.youtube.com/channel/UC_WZF6nNv3l99haKYS6QuUw",
+          "status": "candidate"
+        }
+      }
+    },
+    {
+      "slug": "dekra",
+      "name": "DEKRA",
+      "socials": {
+        "x": {
+          "url": "https://x.com/DEKRA_sa",
+          "handle": "DEKRA_sa",
+          "status": "regional_only",
+          "scope": "South Africa",
+          "evidence_url": "https://x.com/DEKRA_sa",
+          "notes": "Regional account only; global account not confirmed."
+        },
+        "linkedin": {
+          "url": "https://www.linkedin.com/company/dekra/",
+          "status": "candidate",
+          "evidence_url": "https://www.dekra.com/"
+        },
+        "facebook": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.facebook.com/search/top?q=DEKRA"
+        },
+        "instagram": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.instagram.com/"
+        },
+        "youtube": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.youtube.com/results?search_query=DEKRA+official"
+        }
+      }
+    },
+    {
+      "slug": "intertek",
+      "name": "Intertek",
+      "socials": {
+        "x": {
+          "url": null,
+          "handle": null,
+          "status": "not_confirmed",
+          "search_url": "https://x.com/search?q=Intertek",
+          "evidence_url": "https://www.intertek.com/",
+          "notes": "No current global X profile confirmed; do not guess a handle."
+        },
+        "linkedin": {
+          "url": "https://www.linkedin.com/company/intertek/",
+          "status": "candidate",
+          "evidence_url": "https://www.linkedin.com/company/intertek/jobs/"
+        },
+        "facebook": {
+          "url": "https://www.facebook.com/intertek",
+          "status": "candidate"
+        },
+        "instagram": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.instagram.com/"
+        },
+        "youtube": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.youtube.com/results?search_query=Intertek+official"
+        }
+      }
+    },
+    {
+      "slug": "kiwa",
+      "name": "Kiwa",
+      "socials": {
+        "x": {
+          "url": null,
+          "handle": null,
+          "status": "not_confirmed",
+          "search_url": "https://x.com/search?q=Kiwa",
+          "evidence_url": "https://www.kiwa.com/",
+          "notes": "Avoid ambiguous guessed handles."
+        },
+        "linkedin": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.linkedin.com/search/results/companies/?keywords=Kiwa"
+        },
+        "facebook": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.facebook.com/search/top?q=Kiwa"
+        },
+        "instagram": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.instagram.com/"
+        },
+        "youtube": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.youtube.com/results?search_query=Kiwa+official"
+        }
+      }
+    },
+    {
+      "slug": "mistrasgroup",
+      "name": "MISTRAS Group",
+      "socials": {
+        "x": {
+          "url": "https://x.com/MISTRASGroup",
+          "handle": "MISTRASGroup",
+          "status": "profile_exists",
+          "evidence_url": "https://x.com/MISTRASGroup",
+          "notes": "Public profile candidate; official-domain ownership still needs verification."
+        },
+        "linkedin": {
+          "url": "https://www.linkedin.com/company/mistras-group./",
+          "status": "candidate",
+          "evidence_url": "https://app.dealroom.co/companies/mistras_group"
+        },
+        "facebook": {
+          "url": "https://www.facebook.com/mistrasgrouplimited",
+          "status": "candidate",
+          "evidence_url": "https://app.dealroom.co/companies/mistras_group"
+        },
+        "instagram": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.instagram.com/"
+        },
+        "youtube": {
+          "url": null,
+          "status": "not_confirmed",
+          "search_url": "https://www.youtube.com/results?search_query=MISTRAS+Group+official"
+        }
+      }
+    },
+    {
+      "slug": "sgs",
+      "name": "SGS",
+      "socials": {
+        "x": {
+          "url": "https://x.com/SGS_SA",
+          "handle": "SGS_SA",
+          "status": "candidate",
+          "evidence_url": "https://lnk.bio/SGS_SA",
+          "notes": "Candidate corporate profile; verify current status and global scope."
+        },
+        "linkedin": {
+          "url": "https://www.linkedin.com/company/sgs/",
+          "status": "candidate"
+        },
+        "facebook": {
+          "url": "https://www.facebook.com/sgs",
+          "status": "candidate"
+        },
+        "instagram": {
+          "url": "https://www.instagram.com/sgsglobal/",
+          "status": "candidate"
+        },
+        "youtube": {
+          "url": "https://www.youtube.com/user/sgseditor",
+          "status": "candidate"
+        }
+      }
+    },
+    {
+      "slug": "tuv-rheinland",
+      "name": "TÜV Rheinland",
+      "socials": {
+        "x": {
+          "status": "official_link_verified",
+          "accounts": [
+            {
+              "url": "https://x.com/tuvcom_presse",
+              "handle": "tuvcom_presse",
+              "status": "official_link_verified",
+              "scope": "corporate press",
+              "evidence_url": "https://www.tuev.cn/world/en/imprint-wo.html"
+            },
+            {
+              "url": "https://x.com/tuvcom_products",
+              "handle": "tuvcom_products",
+              "status": "official_link_verified",
+              "scope": "product safety",
+              "evidence_url": "https://www.tuv.com/press/en/social-media/"
+            }
+          ],
+          "notes": "Official company pages reportedly point to these accounts; keep scopes distinct."
+        },
+        "linkedin": {
+          "url": "https://www.linkedin.com/company/tuv-rheinland-group",
+          "status": "candidate",
+          "evidence_url": "https://www.tuv.com/press/en/social-media/"
+        },
+        "youtube": {
+          "url": "https://www.youtube.com/user/tuvrheinlandag",
+          "status": "candidate",
+          "evidence_url": "https://www.tuv.com/press/en/social-media/"
+        },
+        "instagram": {
+          "url": "https://www.instagram.com/tuv.rheinland/",
+          "status": "candidate",
+          "evidence_url": "https://www.tuv.com/press/en/social-media/"
+        },
+        "facebook": {
+          "url": "https://www.facebook.com/TUVRheinlandProductSafety/",
+          "status": "candidate",
+          "evidence_url": "https://www.tuv.com/press/en/social-media/"
+        }
+      }
+    },
+    {
+      "slug": "tuv-sud",
+      "name": "TÜV SÜD",
+      "socials": {
+        "x": {
+          "url": "https://x.com/tuvsudSASIA",
+          "handle": "tuvsudSASIA",
+          "status": "regional_only",
+          "scope": "South Asia",
+          "evidence_url": "https://www.tuvsud.com/en-in/-/media/regions/in/pdf-files/brochures-and-infosheet/sustainability-services-brochure-2024.pdf",
+          "notes": "Regional account mentioned by an official brochure; verify live."
+        },
+        "linkedin": {
+          "url": "https://www.linkedin.com/company/tuvsud/",
+          "status": "candidate",
+          "evidence_url": "https://www.tuvsud.com/en/newsroom/social-media"
+        },
+        "instagram": {
+          "url": "https://www.instagram.com/tuvsud/",
+          "status": "candidate",
+          "evidence_url": "https://www.tuvsud.com/en/newsroom/social-media"
+        },
+        "youtube": {
+          "url": "https://www.youtube.com/tuvsud",
+          "status": "candidate",
+          "evidence_url": "https://www.tuvsud.com/en/newsroom/social-media"
+        },
+        "facebook": {
+          "url": "https://fb.me/tuvsudSA",
+          "status": "regional_only",
+          "scope": "South Asia",
+          "evidence_url": "https://www.tuvsud.com/en-in/-/media/regions/in/pdf-files/brochures-and-infosheet/sustainability-services-brochure-2024.pdf"
+        }
+      }
+    }
+  ]
+}
