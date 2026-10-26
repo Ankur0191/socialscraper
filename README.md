@@ -8,27 +8,42 @@ Standalone social intelligence collector for RivalMap. This repository is intent
 3. Confirm X profiles using the official API when credentials are available; a plausible handle or HTTP 200 is not proof of corporate ownership.
 4. Use visible browser inspection only for public pages and ordinary dismissible UI, like cookie banners, newsletter modals and close buttons.
 5. Stop at login walls, CAPTCHA/challenges, anti-bot screens, rate limits, access denied, paywalls or other access controls; do not remove these to collect gated data.
-6. Default to dry-run, record every run and keep the collector bounded by per-run page/post and cost limits.
+6. Default to preview mode for account lists. API collection requires the explicit x-collect command and an X API bearer token.
 7. Later, connect this independent service to the existing RivalMap backend through authenticated server-to-server calls. Do not put credentials in the frontend.
 
 ## Setup
 Run from the repo root:
+
     python -m venv .venv
     # Windows: .venv\Scripts\activate
     # macOS/Linux: source .venv/bin/activate
     pip install -r requirements.txt
     playwright install chromium
 
+Set X_BEARER_TOKEN in your environment when approved X API access is available. Do not commit a real token.
+
 ## Commands
-    python -m socialscraper.cli --help
+Preview profiles without network access:
+
     python -m socialscraper.cli seed-preview
+    python -m socialscraper.cli x-preview
+
+Check URL syntax/reachability (not proof of ownership):
+
     python -m socialscraper.cli verify-links --manifest data/competitor_socials.json
+
+Inspect a public HTTPS page and dismiss ordinary UI only:
+
     python -m socialscraper.cli inspect-public-page --url https://example.org --headed
 
-The verifier tests URL shape and basic reachability only. Platform responses such as 403/429, login redirects and challenge pages are treated as restricted or inconclusive rather than bypassed.
+Collect recent public posts from manifest accounts whose status is explicitly official_link_verified or regional_only:
+
+    python -m socialscraper.cli x-collect --max-posts 10 --output output/x_posts.json
+
+Collection requires X_BEARER_TOKEN and X API endpoint entitlement. It is not run automatically, and it does not scrape the X website.
 
 ## X API collection phase
-When official API access is configured, add user lookup, profile timelines, public mention search where entitled, bounded pagination, rate-limit handling, cost estimates before execution, post normalization, deduplication, and collection run logs. Do not use browser scraping as an interim replacement for official API access to X.
+The adapter supports username lookup and bounded profile-timeline reads, with retry/backoff, post URL normalization and structured JSON output. Next, add stricter cost estimates, paging/cursor handling, persistence/run logs and a dry-run budget gate before scheduling.
 
 ## Next phase
-Test and deploy this service separately. Then connect it to RivalMap through authenticated backend-to-backend calls. No frontend credentials and no shared code changes to testscraper---Copy until a separate integration change is reviewed.
+Test and deploy this service separately. Then connect it to RivalMap through authenticated backend-to-backend calls. No frontend credentials and no code changes to testscraper---Copy until a separate integration change is reviewed.
