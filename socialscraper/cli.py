@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 from socialscraper.browser import inspect_public_page
 from socialscraper.link_verifier import check_link
+from socialscraper.media_intelligence import analyze_media_report
 from socialscraper.x_api import XAPIClient, XAPIError, collect_official_profile
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -68,6 +69,24 @@ def cmd_inspect_public_page(args):
     print(f"\nSaved inspection JSON: {output}")
     return 0 if result["status"]=="ok" else 2
 
+def cmd_analyze_media(args):
+    result = analyze_media_report(
+        input_path=args.input,
+        output_path=args.output,
+        model=args.model,
+        max_posts=args.max_posts,
+        max_images_per_post=args.max_images_per_post,
+    )
+    print(json.dumps({
+        "status": result["status"],
+        "model": result["model"],
+        "posts_considered": result["posts_considered"],
+        "posts_analyzed": result["posts_analyzed"],
+        "posts_skipped_or_failed": result["posts_skipped_or_failed"],
+        "output": args.output,
+    }, indent=2))
+    return 0 if result["status"] == "ok" else 1
+
 def cmd_x_preview(args):
     data=read_manifest(Path(args.manifest)); total=0
     for company in data["companies"]:
@@ -130,6 +149,13 @@ def main():
     inspect.add_argument("--debug-dir",default="output/debug",help="Directory for local debug artifacts.")
     inspect.add_argument("--output-json",default="output/public_page_inspection.json",help="Path for the structured inspection report.")
     inspect.add_argument("--timeout-ms",type=int,default=30000); inspect.add_argument("--keep-open-seconds",type=float,default=0); inspect.set_defaults(handler=cmd_inspect_public_page)
+    analyze=sub.add_parser("analyze-media",help="Opt-in AI analysis of public images/posters captured in an inspection JSON.")
+    analyze.add_argument("--input",default="output/public_page_inspection.json",help="Inspection JSON produced by inspect-public-page.")
+    analyze.add_argument("--output",default="output/media_intelligence.json",help="Path for structured media intelligence JSON.")
+    analyze.add_argument("--model",default=None,help="Vision-capable model override (or set OPENAI_VISION_MODEL).")
+    analyze.add_argument("--max-posts",type=int,default=5,help="Analyze up to five already-captured posts.")
+    analyze.add_argument("--max-images-per-post",type=int,default=2,help="Maximum public images/posters per post.")
+    analyze.set_defaults(handler=cmd_analyze_media)
     xp=sub.add_parser("x-preview",help="Preview X profiles from the manifest without making requests.")
     xp.add_argument("--manifest",default=str(DEFAULT_MANIFEST)); xp.set_defaults(handler=cmd_x_preview)
     xc=sub.add_parser("x-collect",help="Collect approved profiles via official X API only.")
