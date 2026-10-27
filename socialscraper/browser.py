@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -11,6 +12,296 @@ from playwright.sync_api import sync_playwright
 from socialscraper.ui_dismiss import detect_access_gate, dismiss_ordinary_overlays
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _extract_media_evidence(article: Any) -> list[dict[str, Any]]:
+    """Collect media metadata already present in a rendered post card."""
+    media: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    try:
+        images = article.locator("img")
+        image_count = min(images.count(), 30)
+    except Exception:
+        image_count = 0
+        images = None
+
+    for index in range(image_count):
+        image = images.nth(index)
+        try:
+            details = image.evaluate(
+                """el => {
+                    const rect = el.getBoundingClientRect();
+                    const wrapper = el.closest(
+                        '[data-testid="tweetPhoto"], [data-testid^="card.layout"]'
+                    );
+                    return {
+                        src: el.currentSrc || el.src || "",
+                        alt: el.getAttribute("alt") || el.getAttribute("aria-label") || "",
+                        width: Math.round(rect.width),
+                        height: Math.round(rect.height),
+                        natural_width: el.naturalWidth || 0,
+                        natural_height: el.naturalHeight || 0,
+                        in_media_container: Boolean(wrapper)
+                    };
+                }"""
+            )
+        except Exception:
+            continue
+
+        src = str(details.get("src") or "")
+        if not src.startswith(("https://", "http://")):
+            continue
+        # Profile pictures and tiny emoji are not useful post-media evidence.
+        if "/profile_images/" in src or "default_profile" in src:
+            continue
+        alt_text = str(details.get("alt") or "").strip()
+        is_x_media = "pbs.twimg.com/media/" in src
+        is_large = max(
+            int(details.get("width") or 0),
+            int(details.get("height") or 0),
+            int(details.get("natural_width") or 0),
+            int(details.get("natural_height") or 0),
+        ) >= 100
+        if not (
+            details.get("in_media_container")
+            or is_x_media
+            or (alt_text and is_large)
+            or is_large
+        ):
+            continue
+
+        key = ("image", src)
+        if key in seen:
+            continue
+        seen.add(key)
+        media.append({
+            "type": "image",
+            "url": src,
+            "alt_text": alt_text or None,
+            "alt_text_available": bool(alt_text),
+            "width": details.get("natural_width") or details.get("width"),
+            "height": details.get("natural_height") or details.get("height"),
+        })
+
+    try:
+        videos = article.locator("video")
+        video_count = min(videos.count(), 5)
+    except Exception:
+        video_count = 0
+        videos = None
+
+    for index in range(video_count):
+        video = videos.nth(index)
+        try:
+            if not video.is_visible(timeout=250):
+                continue
+        except Exception:
+            continue
+        try:
+            details = video.evaluate(
+                """el => ({
+                    src: el.currentSrc || el.getAttribute("src") || "",
+                    poster: el.poster || "",
+                    width: el.videoWidth || el.clientWidth || 0,
+                    height: el.videoHeight || el.clientHeight || 0,
+                    duration: Number.isFinite(el.duration) ? el.duration : null,
+                    label: el.getAttribute("aria-label") || "",
+                    tracks: Array.from(el.querySelectorAll("track")).map(t => ({
+                        kind: t.kind || "",
+                        src: t.src || "",
+                        language: t.srclang || "",
+                        label: t.label || ""
+                    }))
+                })"""
+            )
+        except Exception:
+            details = {}
+
+        raw_src = str(details.get("src") or "")
+        poster = str(details.get("poster") or "")
+        video_url = raw_src if raw_src.startswith(("https://", "http://")) else None
+        poster_url = poster if poster.startswith(("https://", "http://")) else None
+        tracks = []
+        for track in details.get("tracks") or []:
+            if not isinstance(track, dict):
+                continue
+            raw_track_src = str(track.get("src") or "")
+            tracks.append({
+                "kind": track.get("kind") or None,
+                "url": raw_track_src if raw_track_src.startswith(("https://", "http://")) else None,
+                "language": track.get("language") or None,
+                "label": track.get("label") or None,
+            })
+
+        key = ("video", video_url or poster_url or f"video-{index}")
+        if key in seen:
+            continue
+        seen.add(key)
+        media.append({
+            "type": "video",
+            "url": video_url,
+            "poster_url": poster_url,
+            "duration_seconds": details.get("duration"),
+            "width": details.get("width") or None,
+            "height": details.get("height") or None,
+            "label": str(details.get("label") or "").strip() or None,
+            "caption_tracks": tracks,
+            "video_url_available": bool(video_url),
+        })
+
+    # X can expose a video-player container before attaching a <video> element.
+    if video_count == 0:
+        try:
+            players = article.locator('[data-testid="videoPlayer"], [data-testid="videoComponent"]')
+            if players.count():
+                player = players.first
+                label = (
+                    player.get_attribute("aria-label", timeout=300)
+                    or player.inner_text(timeout=500)
+                    or ""
+                ).strip()
+                media.append({
+                    "type": "video",
+                    "url": None,
+                    "poster_url": None,
+                    "duration_seconds": None,
+                    "label": label[:300] or None,
+                    "caption_tracks": [],
+                    "video_url_available": False,
+                    "note": "Video player container is visible; no direct video URL exposed in the DOM.",
+                })
+        except Exception:
+            pass
+
+    return media
+
+
+def _extract_outbound_links(article: Any) -> list[dict[str, str]]:
+    """List HTTP(S) links shown inside a post, without opening them."""
+    links: list[dict[str, str]] = []
+    seen: set[str] = set()
+    try:
+        anchors = article.locator("a[href]")
+        count = min(anchors.count(), 40)
+    except Exception:
+        return links
+
+    for index in range(count):
+        anchor = anchors.nth(index)
+        try:
+            href = anchor.get_attribute("href", timeout=300)
+            if not href or not href.startswith(("https://", "http://")):
+                continue
+            parsed = urlparse(href)
+            host = (parsed.hostname or "").lower()
+            if host in {"x.com", "www.x.com", "twitter.com", "www.twitter.com"}:
+                continue
+            if href in seen:
+                continue
+            seen.add(href)
+            try:
+                label = anchor.inner_text(timeout=300).strip()
+            except Exception:
+                label = ""
+            try:
+                title = anchor.get_attribute("title", timeout=300) or ""
+            except Exception:
+                title = ""
+            links.append({
+                "url": href,
+                "label": (label or title)[:300],
+            })
+        except Exception:
+            continue
+    return links
+
+
+def _extract_caption(article: Any, card_text: str = "") -> str | None:
+    """Read the caption from known text containers, then fall back to card text."""
+    for selector in ('[data-testid="tweetText"]', "div[lang]"):
+        try:
+            locator = article.locator(selector)
+            candidates = []
+            for index in range(min(locator.count(), 12)):
+                item = locator.nth(index)
+                try:
+                    if not item.is_visible(timeout=200):
+                        continue
+                    value = item.inner_text(timeout=600).strip()
+                except Exception:
+                    continue
+                if len(value) >= 15 and len(value) <= 3000:
+                    candidates.append(value)
+            if candidates:
+                # Tweet text is normally the longest language-tagged text block.
+                return max(candidates, key=len)[:3000]
+        except Exception:
+            continue
+
+    # X's text-container attributes can change. Recover the visible caption by
+    # starting after the account handle/time line and trimming trailing metrics.
+    lines = card_text.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip().startswith("@"):
+            start = index + 1
+            break
+    if start is None:
+        return None
+    if start < len(lines) and _looks_like_displayed_time(lines[start].strip()):
+        start += 1
+    while start < len(lines) and not lines[start].strip():
+        start += 1
+    body = lines[start:]
+    while body and (
+        re.fullmatch(r"\d{1,6}", body[-1].strip())
+        or re.fullmatch(r"\d{1,2}:\d{2}", body[-1].strip())
+    ):
+        body.pop()
+    value = "\n".join(body).strip()
+    return value[:3000] or None
+
+
+def _looks_like_displayed_time(value: str) -> bool:
+    """Recognize the short date/time labels X commonly renders in a post card."""
+    if not value:
+        return False
+    if re.fullmatch(r"(?:now|\d{1,3}\s*(?:s|sec|secs|m|min|mins|h|hr|hrs|d|day|days|w|wk|wks))", value, re.I):
+        return True
+    months = "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec"
+    if re.fullmatch(rf"(?:{months})\s+\d{{1,2}}(?:,\s*\d{{4}})?", value, re.I):
+        return True
+    return bool(re.fullmatch(r"\d{1,2}\s+(?:" + months + r")(?:\s+\d{4})?", value, re.I))
+
+
+def _extract_displayed_time(article: Any, card_text: str) -> tuple[str | None, str | None]:
+    """Return machine-readable and displayed time labels when available."""
+    try:
+        locator = article.locator("time")
+        for index in range(min(locator.count(), 3)):
+            item = locator.nth(index)
+            try:
+                created_at = item.get_attribute("datetime", timeout=300)
+                displayed = (
+                    item.inner_text(timeout=300).strip()
+                    or item.get_attribute("aria-label", timeout=300)
+                    or item.get_attribute("title", timeout=300)
+                )
+                if displayed:
+                    return created_at, displayed
+                if created_at:
+                    return created_at, None
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    lines = [line.strip() for line in card_text.splitlines() if line.strip()]
+    for line in lines:
+        if _looks_like_displayed_time(line):
+            return None, line
+    return None, None
 
 
 def inspect_public_page(
@@ -160,13 +451,7 @@ def inspect_public_page(
                     if not text:
                         continue
 
-                    created_at = None
-                    try:
-                        times = article.locator("time")
-                        if times.count():
-                            created_at = times.first.get_attribute("datetime", timeout=500)
-                    except Exception:
-                        pass
+                    created_at, displayed_time = _extract_displayed_time(article, text)
 
                     post_url = None
                     try:
@@ -183,10 +468,19 @@ def inspect_public_page(
                     except Exception:
                         pass
 
+                    media = _extract_media_evidence(article)
+                    outbound_links = _extract_outbound_links(article)
+                    caption = _extract_caption(article, text)
+
                     visible_posts.append({
                         "created_at": created_at,
+                        "displayed_time": displayed_time,
                         "url": post_url,
+                        "caption": caption,
                         "text": text[:1200],
+                        "media": media,
+                        "external_links": outbound_links,
+                        "media_count": len(media),
                     })
                 out["visible_posts"] = visible_posts
                 out["posts_returned"] = len(visible_posts)

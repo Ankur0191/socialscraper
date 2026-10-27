@@ -58,7 +58,14 @@ def cmd_inspect_public_page(args):
         debug=args.debug,
         debug_dir=args.debug_dir,
     )
+    output = Path(args.output_json)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(result, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
     print(json.dumps(result,indent=2,ensure_ascii=False))
+    print(f"\nSaved inspection JSON: {output}")
     return 0 if result["status"]=="ok" else 2
 
 def cmd_x_preview(args):
@@ -121,6 +128,7 @@ def main():
     inspect.add_argument("--url",required=True); inspect.add_argument("--headed",action="store_true",help="Show the Chromium window.")
     inspect.add_argument("--debug",action="store_true",help="Enable verbose logs, save a Playwright trace and screenshot.")
     inspect.add_argument("--debug-dir",default="output/debug",help="Directory for local debug artifacts.")
+    inspect.add_argument("--output-json",default="output/public_page_inspection.json",help="Path for the structured inspection report.")
     inspect.add_argument("--timeout-ms",type=int,default=30000); inspect.add_argument("--keep-open-seconds",type=float,default=0); inspect.set_defaults(handler=cmd_inspect_public_page)
     xp=sub.add_parser("x-preview",help="Preview X profiles from the manifest without making requests.")
     xp.add_argument("--manifest",default=str(DEFAULT_MANIFEST)); xp.set_defaults(handler=cmd_x_preview)
