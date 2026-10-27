@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -216,16 +217,91 @@ def _extract_outbound_links(article: Any) -> list[dict[str, str]]:
     return links
 
 
-def _extract_caption(article: Any) -> str | None:
-    """Read the post's caption field separately from engagement controls."""
+def _extract_caption(article: Any, card_text: str = "") -> str | None:
+    """Read the caption from known text containers, then fall back to card text."""
+    for selector in ('[data-testid="tweetText"]', "div[lang]", "div[dir='auto']"):
+        try:
+            locator = article.locator(selector)
+            candidates = []
+            for index in range(min(locator.count(), 12)):
+                item = locator.nth(index)
+                try:
+                    if not item.is_visible(timeout=200):
+                        continue
+                    value = item.inner_text(timeout=600).strip()
+                except Exception:
+                    continue
+                if len(value) >= 15 and len(value) <= 3000:
+                    candidates.append(value)
+            if candidates:
+                # Tweet text is normally the longest language-tagged text block.
+                return max(candidates, key=len)[:3000]
+        except Exception:
+            continue
+
+    # X's text-container attributes can change. Recover the visible caption by
+    # starting after the account handle/time line and trimming trailing metrics.
+    lines = card_text.splitlines()
+    start = None
+    for index, line in enumerate(lines):
+        if line.strip().startswith("@"):
+            start = index + 1
+            break
+    if start is None:
+        return None
+    if start < len(lines) and _looks_like_displayed_time(lines[start].strip()):
+        start += 1
+    while start < len(lines) and not lines[start].strip():
+        start += 1
+    body = lines[start:]
+    while body and (
+        re.fullmatch(r"\d{1,6}", body[-1].strip())
+        or re.fullmatch(r"\d{1,2}:\d{2}", body[-1].strip())
+    ):
+        body.pop()
+    value = "\n".join(body).strip()
+    return value[:3000] or None
+
+
+def _looks_like_displayed_time(value: str) -> bool:
+    """Recognize the short date/time labels X commonly renders in a post card."""
+    if not value:
+        return False
+    if re.fullmatch(r"(?:now|\d{1,3}\s*(?:s|sec|secs|m|min|mins|h|hr|hrs|d|day|days|w|wk|wks))", value, re.I):
+        return True
+    months = "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec"
+    if re.fullmatch(rf"(?:{months})\s+\d{1,2}(?:,\s*\d{4})?", value, re.I):
+        return True
+    return bool(re.fullmatch(r"\d{1,2}\s+(?:" + months + r")(?:\s+\d{4})?", value, re.I))
+
+
+def _extract_displayed_time(article: Any, card_text: str) -> tuple[str | None, str | None]:
+    """Return machine-readable and displayed time labels when available."""
     try:
-        caption = article.locator('[data-testid="tweetText"]').first
-        if caption.count():
-            value = caption.inner_text(timeout=800).strip()
-            return value[:3000] or None
+        locator = article.locator("time")
+        for index in range(min(locator.count(), 3)):
+            item = locator.nth(index)
+            try:
+                created_at = item.get_attribute("datetime", timeout=300)
+                displayed = (
+                    item.inner_text(timeout=300).strip()
+                    or item.get_attribute("aria-label", timeout=300)
+                    or item.get_attribute("title", timeout=300)
+                )
+                if displayed:
+                    return created_at, displayed
+                if created_at:
+                    return created_at, None
+            except Exception:
+                continue
     except Exception:
         pass
-    return None
+
+    lines = [line.strip() for line in card_text.splitlines() if line.strip()]
+    for line in lines:
+        if _looks_like_displayed_time(line):
+            return None, line
+    return None, None
 
 
 def inspect_public_page(
@@ -375,15 +451,7 @@ def inspect_public_page(
                     if not text:
                         continue
 
-                    created_at = None
-                    displayed_time = None
-                    try:
-                        times = article.locator("time")
-                        if times.count():
-                            created_at = times.first.get_attribute("datetime", timeout=500)
-                            displayed_time = times.first.inner_text(timeout=300).strip() or None
-                    except Exception:
-                        pass
+                    created_at, displayed_time = _extract_displayed_time(article, text)
 
                     post_url = None
                     try:
@@ -402,7 +470,7 @@ def inspect_public_page(
 
                     media = _extract_media_evidence(article)
                     outbound_links = _extract_outbound_links(article)
-                    caption = _extract_caption(article)
+                    caption = _extract_caption(article, text)
 
                     visible_posts.append({
                         "created_at": created_at,
