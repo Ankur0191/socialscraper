@@ -43,7 +43,7 @@ def inspect_public_page(
         "blockers": [],
         "warnings": [],
         "article_element_count": None,
-        "visible_article_count": None,
+        "visible_article_count_checked": None,
     }
     if debug:
         out["debug_artifacts"] = {
@@ -139,7 +139,7 @@ def inspect_public_page(
                 except Exception:
                     continue
             out["article_element_count"] = article_count
-            out["visible_article_count"] = visible_count
+            out["visible_article_count_checked"] = visible_count
             LOGGER.info(
                 "Inspection status: %s; article elements: %s; visible articles checked: %s",
                 out["status"],
