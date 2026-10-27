@@ -16,6 +16,7 @@ DISMISS_SELECTORS = [
     '[data-testid="modal-close"]', '#onetrust-accept-btn-handler', '#onetrust-reject-all-handler',
 ]
 GATE_PATTERNS = [
+    "sign in to x", "log in to x", "create your account", "something went wrong",
     "sign in to continue", "log in to continue", "you must be logged in",
     "create an account to continue", "subscribe to continue", "subscription required",
     "verify you are human", "checking your browser", "unusual traffic", "access denied",
