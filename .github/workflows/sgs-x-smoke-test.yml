@@ -67,6 +67,32 @@ jobs:
                       page.wait_for_load_state("networkidle", timeout=5000)
                   except Exception:
                       pass
+
+                  # First try normal, visible dismissal controls for overlays/modals.
+                  # This only closes UI; it does not submit forms or defeat access controls.
+                  dismissed = []
+                  close_selectors = [
+                      'button[aria-label="Close"]',
+                      '[role="button"][aria-label="Close"]',
+                      'button[data-testid="app-bar-close"]',
+                      '[data-testid="sheetDialog"] button[aria-label="Close"]',
+                      'button:has-text("Not now")',
+                      'button:has-text("Maybe later")'
+                  ]
+                  for selector in close_selectors:
+                      try:
+                          locator = page.locator(selector)
+                          for idx in range(min(locator.count(), 3)):
+                              item = locator.nth(idx)
+                              if item.is_visible(timeout=300):
+                                  item.click(timeout=700)
+                                  dismissed.append(selector)
+                                  page.wait_for_timeout(300)
+                                  break
+                      except Exception:
+                          pass
+                  result["dismissed_ui_controls"] = dismissed
+
                   result["final_url"] = page.url
                   result["http_status"] = response.status if response else None
                   body = page.locator("body").inner_text(timeout=3000)
