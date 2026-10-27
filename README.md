@@ -52,18 +52,6 @@ The inspector also separates the post caption from the full visible card text an
 
 The complete structured report is saved to output/sgs_x_public_page.json (or the path passed to --output-json). This is metadata extraction, not full media understanding. It does not download video files, defeat protected media URLs, or generate an image/video transcript. To turn media into intelligence, a later analysis stage can run OCR/vision on accessible images/keyframes and speech transcription on legitimately accessible audio, then produce a structured event summary with source links and confidence. Missing alt text or captions should be recorded as unavailable, not guessed.
 
-### Optional AI media analysis (API usage may be billed separately)
-
-After an inspection JSON exists, you can ask a vision-capable model to extract text visible inside images, important numbers, named entities and business signals. The model is instructed to separate observations from inferences and list unknowns rather than guessing.
-
-1. Copy .env.example to .env if you do not already have a local .env file.
-2. Add your own API key to the local .env file by setting OPENAI_API_KEY. Do not commit or share this key.
-3. Run the explicit analysis command:
-
-    python -m socialscraper.cli analyze-media --input output/sgs_x_public_page.json --output output/sgs_x_media_intelligence.json --max-posts 5 --max-images-per-post 2
-
-The command is opt-in; the browser inspection alone does not call the model. It analyzes at most five posts and two unique publicly exposed image/poster URLs per post. It accepts only the public X image CDN host recorded by the inspector. It does not download video files or transcribe their audio. A video poster is analyzed only as a still image. Vision input/output usage is billed according to the API account and selected model; check current model pricing before running larger batches. The output preserves source post URLs, image references, evidence quotes, confidence and model usage token counts. Verify extracted numbers against the underlying report before treating them as confirmed intelligence.
-
 Open a trace locally with:
 
     playwright show-trace output/debug/playwright-trace.zip
