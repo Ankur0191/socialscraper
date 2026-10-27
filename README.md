@@ -42,7 +42,7 @@ On Windows, activate your virtual environment, then run this from the repository
 
     python -m socialscraper.cli inspect-public-page --url https://x.com/SGS_SA --headed --debug --timeout-ms 45000 --keep-open-seconds 15
 
-The browser window is visible, verbose diagnostic logs are printed in the terminal, and the command saves a Playwright trace and final screenshot under output/debug/. The JSON result includes the HTTP status, final URL/title, detected access-control signals, and the number of article elements visible in the page DOM. It does not extract post text.
+The browser window is visible, verbose diagnostic logs are printed in the terminal, and the command saves a Playwright trace and final screenshot under output/debug/. The JSON result includes the HTTP status, final URL/title, detected access-control signals, and the total article-element count plus the visible count checked among the first 100 article elements. It does not extract post text.
 
 Open a trace locally with:
 
