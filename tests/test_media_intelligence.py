@@ -75,7 +75,7 @@ class MediaIntelligenceTests(unittest.TestCase):
         }
         self.assertEqual(
             _post_images(post, 2),
-            [{"url": "https://pbs.twimg.com/media/abc?format=webp", "kind": "image"}],
+            [{"url": "https://pbs.twimg.com/media/abc?format=webp", "kind": "video_poster"}],
         )
 
     def test_extracts_response_text_from_responses_api_payload(self):
