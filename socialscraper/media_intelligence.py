@@ -127,18 +127,23 @@ def _public_image_url(value: Any) -> str | None:
 def _post_images(post: dict[str, Any], limit: int) -> list[dict[str, str]]:
     found: list[dict[str, str]] = []
     seen: set[str] = set()
+    video_posters = {
+        url
+        for item in (post.get("media") or [])
+        if isinstance(item, dict) and item.get("type") == "video"
+        if (url := _public_image_url(item.get("poster_url")))
+    }
     for item in post.get("media") or []:
         if not isinstance(item, dict):
             continue
-        # Prefer image media. Use a video poster only when a direct image URL is
-        # not already represented; this deliberately does not claim video analysis.
         candidates = []
         if item.get("type") == "image":
-            candidates.append((item.get("url"), "image"))
+            image_url = _public_image_url(item.get("url"))
+            kind = "video_poster" if image_url in video_posters else "image"
+            candidates.append((image_url, kind))
         elif item.get("type") == "video":
-            candidates.append((item.get("poster_url"), "video_poster"))
-        for candidate, media_kind in candidates:
-            url = _public_image_url(candidate)
+            candidates.append((_public_image_url(item.get("poster_url")), "video_poster"))
+        for url, media_kind in candidates:
             if not url or url in seen:
                 continue
             seen.add(url)
@@ -288,9 +293,9 @@ def analyze_media_report(
         raise ValueError(f"Invalid inspection JSON: {exc}") from exc
     if not isinstance(source, dict):
         raise ValueError("Inspection JSON must be an object.")
-    if source.get("status") != "ok":
+    if source.get("status") != "ok" or source.get("blockers"):
         raise ValueError(
-            "The source inspection did not finish with status 'ok'; media analysis stopped."
+            "The source inspection is not confirmed as an accessible public page; media analysis stopped."
         )
 
     posts = source.get("visible_posts")
