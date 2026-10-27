@@ -1,6 +1,6 @@
 """SocialScraper CLI."""
 from __future__ import annotations
-import argparse, json
+import argparse, json, logging
 from pathlib import Path
 from typing import Any
 from socialscraper.browser import inspect_public_page
@@ -50,7 +50,14 @@ def cmd_verify_links(args):
     return 0
 
 def cmd_inspect_public_page(args):
-    result=inspect_public_page(args.url,headed=args.headed,timeout_ms=args.timeout_ms,keep_open_seconds=args.keep_open_seconds)
+    result=inspect_public_page(
+        args.url,
+        headed=args.headed,
+        timeout_ms=args.timeout_ms,
+        keep_open_seconds=args.keep_open_seconds,
+        debug=args.debug,
+        debug_dir=args.debug_dir,
+    )
     print(json.dumps(result,indent=2,ensure_ascii=False))
     return 0 if result["status"]=="ok" else 2
 
@@ -111,13 +118,18 @@ def main():
     verify=sub.add_parser("verify-links",help="Check URL syntax/reachability, not ownership.")
     verify.add_argument("--manifest",default=str(DEFAULT_MANIFEST)); verify.add_argument("--output",default="output/link_checks.json"); verify.add_argument("--timeout",type=float,default=8); verify.set_defaults(handler=cmd_verify_links)
     inspect=sub.add_parser("inspect-public-page",help="Inspect public HTTPS page and dismiss ordinary UI.")
-    inspect.add_argument("--url",required=True); inspect.add_argument("--headed",action="store_true"); inspect.add_argument("--timeout-ms",type=int,default=30000); inspect.add_argument("--keep-open-seconds",type=float,default=0); inspect.set_defaults(handler=cmd_inspect_public_page)
+    inspect.add_argument("--url",required=True); inspect.add_argument("--headed",action="store_true",help="Show the Chromium window.")
+    inspect.add_argument("--debug",action="store_true",help="Enable verbose logs, save a Playwright trace and screenshot.")
+    inspect.add_argument("--debug-dir",default="output/debug",help="Directory for local debug artifacts.")
+    inspect.add_argument("--timeout-ms",type=int,default=30000); inspect.add_argument("--keep-open-seconds",type=float,default=0); inspect.set_defaults(handler=cmd_inspect_public_page)
     xp=sub.add_parser("x-preview",help="Preview X profiles from the manifest without making requests.")
     xp.add_argument("--manifest",default=str(DEFAULT_MANIFEST)); xp.set_defaults(handler=cmd_x_preview)
     xc=sub.add_parser("x-collect",help="Collect approved profiles via official X API only.")
     xc.add_argument("--manifest",default=str(DEFAULT_MANIFEST)); xc.add_argument("--max-posts",type=int,default=10); xc.add_argument("--max-total-posts",type=int,default=100)
     xc.add_argument("--output",default="output/x_posts.json"); xc.set_defaults(handler=cmd_x_collect)
     args=parser.parse_args()
+    logging.basicConfig(level=logging.DEBUG if getattr(args,"debug",False) else logging.INFO,
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     try: raise SystemExit(args.handler(args))
     except (ValueError,FileNotFoundError,json.JSONDecodeError) as exc: parser.error(str(exc))
 if __name__=="__main__": main()

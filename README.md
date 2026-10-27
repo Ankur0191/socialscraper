@@ -36,6 +36,20 @@ Inspect a public HTTPS page and dismiss ordinary UI only:
 
     python -m socialscraper.cli inspect-public-page --url https://example.org --headed
 
+### Local headed browser debugging
+
+On Windows, activate your virtual environment, then run this from the repository root:
+
+    python -m socialscraper.cli inspect-public-page --url https://x.com/SGS_SA --headed --debug --timeout-ms 45000 --keep-open-seconds 15
+
+The browser window is visible, verbose diagnostic logs are printed in the terminal, and the command saves a Playwright trace and final screenshot under output/debug/. The JSON result includes HTTP status, final URL/title, detected access-control signals, article counts, and up to five already-rendered public X posts with short text snippets, timestamps and post URLs. It does not scroll to load more posts or extract content if a login, challenge, rate-limit, or other access-control signal is detected.
+
+Open a trace locally with:
+
+    playwright show-trace output/debug/playwright-trace.zip
+
+A trace can contain page content and screenshots; keep it local and review it before sharing. If X shows a login, challenge, rate-limit, or other access-control screen, the inspector reports it and stops without trying to bypass it.
+
 Collect recent public posts from manifest accounts whose status is explicitly official_link_verified or regional_only:
 
     python -m socialscraper.cli x-collect --max-posts 10 --output output/x_posts.json
