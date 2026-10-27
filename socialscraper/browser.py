@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
 
@@ -44,6 +45,8 @@ def inspect_public_page(
         "warnings": [],
         "article_element_count": None,
         "visible_article_count_checked": None,
+        "posts_returned": 0,
+        "visible_posts": [],
     }
     if debug:
         out["debug_artifacts"] = {
@@ -140,11 +143,60 @@ def inspect_public_page(
                     continue
             out["article_element_count"] = article_count
             out["visible_article_count_checked"] = visible_count
+
+            # Read only post cards already rendered on an accessible public X page.
+            # Never scroll or collect post text after a login/challenge/rate-limit signal.
+            host = (urlparse(page.url).hostname or "").lower()
+            if host in {"x.com", "www.x.com", "twitter.com", "www.twitter.com"} and out["status"] == "ok":
+                visible_posts = []
+                for index in range(min(article_count, 5)):
+                    article = articles.nth(index)
+                    try:
+                        if not article.is_visible(timeout=300):
+                            continue
+                        text = article.inner_text(timeout=1500).strip()
+                    except Exception:
+                        continue
+                    if not text:
+                        continue
+
+                    created_at = None
+                    try:
+                        times = article.locator("time")
+                        if times.count():
+                            created_at = times.first.get_attribute("datetime", timeout=500)
+                    except Exception:
+                        pass
+
+                    post_url = None
+                    try:
+                        links = article.locator('a[href*="/status/"]')
+                        for link_index in range(min(links.count(), 8)):
+                            href = links.nth(link_index).get_attribute("href", timeout=500)
+                            if href and "/status/" in href:
+                                if href.startswith("/"):
+                                    post_url = "https://x.com" + href
+                                elif href.startswith("https://x.com/"):
+                                    post_url = href
+                                if post_url:
+                                    break
+                    except Exception:
+                        pass
+
+                    visible_posts.append({
+                        "created_at": created_at,
+                        "url": post_url,
+                        "text": text[:1200],
+                    })
+                out["visible_posts"] = visible_posts
+                out["posts_returned"] = len(visible_posts)
+
             LOGGER.info(
-                "Inspection status: %s; article elements: %s; visible articles checked: %s",
+                "Inspection status: %s; article elements: %s; visible articles checked: %s; public posts captured: %s",
                 out["status"],
                 article_count,
                 visible_count,
+                out["posts_returned"],
             )
             if out["blockers"]:
                 LOGGER.warning(
