@@ -219,7 +219,7 @@ def _extract_outbound_links(article: Any) -> list[dict[str, str]]:
 
 def _extract_caption(article: Any, card_text: str = "") -> str | None:
     """Read the caption from known text containers, then fall back to card text."""
-    for selector in ('[data-testid="tweetText"]', "div[lang]", "div[dir='auto']"):
+    for selector in ('[data-testid="tweetText"]', "div[lang]"):
         try:
             locator = article.locator(selector)
             candidates = []
@@ -270,7 +270,7 @@ def _looks_like_displayed_time(value: str) -> bool:
     if re.fullmatch(r"(?:now|\d{1,3}\s*(?:s|sec|secs|m|min|mins|h|hr|hrs|d|day|days|w|wk|wks))", value, re.I):
         return True
     months = "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec"
-    if re.fullmatch(rf"(?:{months})\s+\d{1,2}(?:,\s*\d{4})?", value, re.I):
+    if re.fullmatch(rf"(?:{months})\s+\d{{1,2}}(?:,\s*\d{{4}})?", value, re.I):
         return True
     return bool(re.fullmatch(r"\d{1,2}\s+(?:" + months + r")(?:\s+\d{4})?", value, re.I))
 
