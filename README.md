@@ -44,6 +44,14 @@ On Windows, activate your virtual environment, then run this from the repository
 
 The browser window is visible, verbose diagnostic logs are printed in the terminal, and the command saves a Playwright trace and final screenshot under output/debug/. The JSON result includes HTTP status, final URL/title, detected access-control signals, article counts, and up to five already-rendered public X posts with short text snippets, timestamps and post URLs. It does not scroll to load more posts or extract content if a login, challenge, rate-limit, or other access-control signal is detected.
 
+The inspector also separates the post caption from the full visible card text and captures bounded media evidence for each rendered post:
+- Images: public image URL, available alt text, and dimensions.
+- Videos: video/poster URLs when exposed in the DOM, duration/dimensions when available, and links to caption/subtitle tracks if the page exposes them.
+- Outbound URLs shown inside the post, without opening them.
+- The time label displayed by X (for example, "4h") alongside the machine-readable timestamp when available.
+
+This is metadata extraction, not full media understanding. It does not download video files, defeat protected media URLs, or generate an image/video transcript. To turn media into intelligence, a later analysis stage can run OCR/vision on accessible images/keyframes and speech transcription on legitimately accessible audio, then produce a structured event summary with source links and confidence. Missing alt text or captions should be recorded as unavailable, not guessed.
+
 Open a trace locally with:
 
     playwright show-trace output/debug/playwright-trace.zip
