@@ -1,4 +1,4 @@
-name: SGS X API smoke test
+name: SGS public X page smoke test
 
 on:
   workflow_dispatch:
@@ -10,9 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  sgs-x-smoke-test:
+  public-x-page-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -22,82 +22,127 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install dependencies and browser
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
 
-      - name: Check X API access and fetch five recent SGS posts
-        env:
-          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+      - name: Inspect publicly accessible SGS X timeline
         run: |
           python - <<'PY'
-          import json, os, sys, urllib.error, urllib.parse, urllib.request
+          import json, os, re, sys
           from datetime import datetime, timezone
+          from urllib.parse import urlparse
+          from playwright.sync_api import sync_playwright
 
-          token = os.environ.get("X_BEARER_TOKEN", "").strip()
-          if not token:
-              print("FAIL: GitHub Actions secret X_BEARER_TOKEN is not configured.")
-              sys.exit(2)
-
-          base = "https://api.x.com/2"
-          headers = {"Authorization": "Bearer " + token, "Accept": "application/json"}
-          def get(path, params=None):
-              url = base + path
-              if params:
-                  url += "?" + urllib.parse.urlencode(params)
-              req = urllib.request.Request(url, headers=headers)
-              try:
-                  with urllib.request.urlopen(req, timeout=25) as response:
-                      return json.loads(response.read().decode("utf-8"))
-              except urllib.error.HTTPError as exc:
-                  body = exc.read().decode("utf-8", errors="replace")
-                  try:
-                      detail = json.loads(body).get("detail") or json.loads(body).get("title") or "request rejected"
-                  except Exception:
-                      detail = "request rejected"
-                  print(f"X API request failed: HTTP {exc.code}: {str(detail)[:300]}")
-                  sys.exit(3)
-
-          user_payload = get("/users/by/username/SGS_SA", {"user.fields": "id,name,username,verified,public_metrics"})
-          user = user_payload.get("data")
-          if not user:
-              print("FAIL: X API did not return a user record for SGS_SA.")
-              sys.exit(4)
-
-          posts_payload = get("/users/" + urllib.parse.quote(str(user["id"]), safe="") + "/tweets", {
-              "max_results": 5,
-              "exclude": "retweets",
-              "tweet.fields": "id,text,created_at,lang,public_metrics"
-          })
-          posts = posts_payload.get("data") or []
+          url = "https://x.com/SGS_SA"
+          gate_patterns = [
+              "log in to x", "sign in to x", "create your account",
+              "verify you are human", "checking your browser",
+              "unusual traffic", "rate limit", "something went wrong",
+              "this account doesn’t exist", "this account doesn't exist"
+          ]
           result = {
               "tested_at": datetime.now(timezone.utc).isoformat(),
-              "source": "official X API v2",
-              "account_lookup": {"id": str(user["id"]), "name": user.get("name"), "username": user.get("username")},
-              "posts_returned": len(posts),
-              "posts": [{
-                  "id": str(p.get("id", "")),
-                  "url": "https://x.com/" + user.get("username", "SGS_SA") + "/status/" + str(p.get("id", "")),
-                  "created_at": p.get("created_at"),
-                  "text": p.get("text", ""),
-                  "lang": p.get("lang"),
-                  "public_metrics": p.get("public_metrics", {})
-              } for p in posts]
+              "source": "public X webpage via Playwright; no API token",
+              "account_url": url,
+              "status": "unknown",
+              "posts_returned": 0,
+              "posts": [],
+              "notes": []
           }
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch(headless=True)
+              context = browser.new_context(
+                  viewport={"width": 1440, "height": 1000},
+                  locale="en-US",
+                  user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+              )
+              page = context.new_page()
+              page.set_default_navigation_timeout(25000)
+              try:
+                  response = page.goto(url, wait_until="domcontentloaded")
+                  try:
+                      page.wait_for_load_state("networkidle", timeout=5000)
+                  except Exception:
+                      pass
+                  result["final_url"] = page.url
+                  result["http_status"] = response.status if response else None
+                  body = page.locator("body").inner_text(timeout=3000)
+                  lower = body.lower()
+                  gates = [pattern for pattern in gate_patterns if pattern in lower]
+                  path = urlparse(page.url).path.lower()
+                  if any(part in path for part in ("/login", "/i/flow/login", "/account/access")):
+                      gates.append("login/access-control route")
+                  if response and response.status in (401, 403, 429):
+                      gates.append("HTTP " + str(response.status))
+                  if gates:
+                      result["status"] = "public_access_limited"
+                      result["notes"] = sorted(set(gates))
+                      print("PUBLIC ACCESS LIMITED: X displayed a login, challenge, rate-limit, or access-control signal.")
+                      print("No attempt was made to bypass it.")
+                  else:
+                      articles = page.locator("article")
+                      count = min(articles.count(), 5)
+                      for index in range(count):
+                          article = articles.nth(index)
+                          try:
+                              text = article.inner_text(timeout=1500).strip()
+                          except Exception:
+                              text = ""
+                          if not text:
+                              continue
+                          try:
+                              times = article.locator("time")
+                              created_at = times.first.get_attribute("datetime", timeout=500) if times.count() else None
+                          except Exception:
+                              created_at = None
+                          post_url = None
+                          try:
+                              links = article.locator('a[href*="/status/"]')
+                              for link_index in range(min(links.count(), 8)):
+                                  href = links.nth(link_index).get_attribute("href")
+                                  if href and "/status/" in href:
+                                      post_url = "https://x.com" + href if href.startswith("/") else href
+                                      break
+                          except Exception:
+                              pass
+                          if post_url and not post_url.startswith("https://x.com/"):
+                              continue
+                          result["posts"].append({
+                              "created_at": created_at,
+                              "url": post_url,
+                              "text": text[:12000]
+                          })
+                      result["posts_returned"] = len(result["posts"])
+                      result["status"] = "success" if result["posts"] else "no_public_posts_rendered"
+                      if not result["posts"]:
+                          result["notes"] = ["No visible post articles were available in the public page response."]
+                      print(f"Public page status: {result['status']}; visible posts extracted: {result['posts_returned']}")
+                      for index, post in enumerate(result["posts"], 1):
+                          print(f"{index}. {post.get('created_at') or 'timestamp unavailable'} | {post.get('url') or 'post URL unavailable'}")
+                          print("   " + re.sub(r"\\s+", " ", post["text"])[:240])
+              except Exception as exc:
+                  result["status"] = "request_error"
+                  result["notes"] = [type(exc).__name__ + ": " + str(exc)[:250]]
+                  print("PUBLIC PAGE TEST ERROR: " + result["notes"][0])
+              finally:
+                  context.close()
+                  browser.close()
+
           os.makedirs("output", exist_ok=True)
-          with open("output/sgs_x_last5.json", "w", encoding="utf-8") as f:
-              json.dump(result, f, ensure_ascii=False, indent=2)
-          print(f"PASS: X API access succeeded for @{user.get('username')}; returned {len(posts)} post(s).")
-          for i, post in enumerate(result["posts"], 1):
-              print(f"{i}. {post.get('created_at') or 'timestamp unavailable'} | {post['url']}")
-          if not posts:
-              print("NOTE: API access worked, but no posts were returned for this endpoint/account.")
+          with open("output/sgs_x_public_last5.json", "w", encoding="utf-8") as file:
+              json.dump(result, file, ensure_ascii=False, indent=2)
+          if result["status"] != "success":
+              sys.exit(1)
           PY
 
-      - name: Upload SGS posts artifact
+      - name: Upload public-page test result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sgs-x-smoke-test
-          path: output/sgs_x_last5.json
+          name: sgs-x-public-page-test
+          path: output/sgs_x_public_last5.json
           if-no-files-found: ignore
           retention-days: 3
