@@ -40,7 +40,7 @@ Inspect a public HTTPS page and dismiss ordinary UI only:
 
 On Windows, activate your virtual environment, then run this from the repository root:
 
-    python -m socialscraper.cli inspect-public-page --url https://x.com/SGS_SA --headed --debug --timeout-ms 45000 --keep-open-seconds 15
+    python -m socialscraper.cli inspect-public-page --url https://x.com/SGS_SA --headed --debug --timeout-ms 45000 --keep-open-seconds 15 --output-json output/sgs_x_public_page.json
 
 The browser window is visible, verbose diagnostic logs are printed in the terminal, and the command saves a Playwright trace and final screenshot under output/debug/. The JSON result includes HTTP status, final URL/title, detected access-control signals, article counts, and up to five already-rendered public X posts with short text snippets, timestamps and post URLs. It does not scroll to load more posts or extract content if a login, challenge, rate-limit, or other access-control signal is detected.
 
@@ -50,7 +50,7 @@ The inspector also separates the post caption from the full visible card text an
 - Outbound URLs shown inside the post, without opening them.
 - The time label displayed by X (for example, "4h") alongside the machine-readable timestamp when available.
 
-This is metadata extraction, not full media understanding. It does not download video files, defeat protected media URLs, or generate an image/video transcript. To turn media into intelligence, a later analysis stage can run OCR/vision on accessible images/keyframes and speech transcription on legitimately accessible audio, then produce a structured event summary with source links and confidence. Missing alt text or captions should be recorded as unavailable, not guessed.
+The complete structured report is saved to output/sgs_x_public_page.json (or the path passed to --output-json). This is metadata extraction, not full media understanding. It does not download video files, defeat protected media URLs, or generate an image/video transcript. To turn media into intelligence, a later analysis stage can run OCR/vision on accessible images/keyframes and speech transcription on legitimately accessible audio, then produce a structured event summary with source links and confidence. Missing alt text or captions should be recorded as unavailable, not guessed.
 
 Open a trace locally with:
 
