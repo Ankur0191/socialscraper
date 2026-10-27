@@ -12,7 +12,9 @@ permissions:
 jobs:
   public-x-page-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.56.0-noble
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -22,10 +24,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies and browser
+      - name: Verify preinstalled Playwright and Chromium
+        timeout-minutes: 2
         run: |
-          pip install -r requirements.txt
-          playwright install --with-deps chromium
+          python -c "import playwright; print('Playwright', playwright.__file__)"
+          python -m playwright --version
+          python -c "from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(headless=True); print('Chromium launch OK'); b.close(); p.stop()"
 
       - name: Inspect publicly accessible SGS X timeline
         run: |
