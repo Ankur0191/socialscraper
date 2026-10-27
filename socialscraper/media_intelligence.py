@@ -11,7 +11,7 @@ import requests
 from dotenv import load_dotenv
 
 RESPONSES_URL = "https://api.openai.com/v1/responses"
-DEFAULT_MODEL = "gpt-4.1-mini"
+DEFAULT_MODEL = "gpt-5.4-mini"
 MAX_POSTS_HARD_LIMIT = 5
 MAX_IMAGES_HARD_LIMIT = 4
 
